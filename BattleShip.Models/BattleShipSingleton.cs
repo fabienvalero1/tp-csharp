@@ -16,14 +16,24 @@ public class BattleShipSingleton : SingletonBase<BattleShipSingleton>
     public List<BattleShip> BattleShips { get; set; } = new List<BattleShip>();
     
     /// <summary>
-    /// Board of the game
+    /// Human Player Board
     /// </summary>
-    public BoardCell[,] Board { get; set; } = new BoardCell[10, 10];
+    public BoardCell[,] HumanPlayerBoard { get; set; } = new BoardCell[10, 10];
+
+	/// <summary>
+    /// AI Player Board
+    /// </summary>
+    public BoardCell[,] AIPlayerBoard { get; set; } = new BoardCell[10, 10];
     
     /// <summary>
     /// Players in the game
     /// </summary>
     public List<Player> Players { get; set; } = new List<Player>();
+
+	/// <summary>
+    /// Game Board Size
+    /// </summary>
+	public const int BoardSize = 10;
     
     /// <summary>
     /// The method to create a new BattleShip game
@@ -35,22 +45,25 @@ public class BattleShipSingleton : SingletonBase<BattleShipSingleton>
         Players.Add(humanPlayer);
         Players.Add(new Player { Name = "Computer" });
         Id = Guid.NewGuid();
-        Board = new BoardCell[10, 10];
-        
-        Initialization();
+        HumanPlayerBoard = InitializeBoardCell(true);
+        AIPlayerBoard = InitializeBoardCell(false);
     }
 
     /// <summary>
-    /// 
+    /// Initialize a new game board with ships placed randomly
     /// </summary>
-    /// <returns></returns>
-    public void Initialization()
+	/// <returns>
+	/// The initialized game board
+	/// </returns>
+    public BoardCell [,] InitializeBoardCell(bool isHuman)
     {
-        for (int i = 0; i < Board.GetLength(0); i++)
+		BoardCell[,] board = new BoardCell[BoardSize, BoardSize];
+
+        for (int i = 0; i < board.GetLength(0); i++)
         {
-            for (int j = 0; j < Board.GetLength(1); j++)
+            for (int j = 0; j < board.GetLength(1); j++)
             {
-                Board[i, j] = new BoardCell
+                board[i, j] = new BoardCell
                 {
                     Row = i,
                     Column = j,
@@ -61,15 +74,16 @@ public class BattleShipSingleton : SingletonBase<BattleShipSingleton>
         }
         
         Random random = new Random();
-        int rows = Board.GetLength(0);
-        int cols = Board.GetLength(1);
+        int rows = board.GetLength(0);
+        int cols = board.GetLength(1);
 
-        for (int i = 0; i < 10; i++)
+		Player owner = isHuman ? Players[0] : Players[1];
+
+        for (int i = 0; i < BoardSize; i++)
         {
             char symbol = (char)('A' + random.Next(0, 6));
             int size = random.Next(1, 5);
             char orientation = random.Next(0, 2) == 0 ? 'H' : 'V';
-            Player owner = Players[i % Players.Count];
 
             int startRow, startCol;
             bool placed = false;
@@ -97,7 +111,7 @@ public class BattleShipSingleton : SingletonBase<BattleShipSingleton>
                     int checkRow = orientation == 'H' ? startRow : startRow + j;
                     int checkCol = orientation == 'H' ? startCol + j : startCol;
                     
-                    if (Board[checkRow, checkCol].Ship != null)
+                    if (board[checkRow, checkCol].Ship != null)
                     {
                         canPlace = false;
                         break;
@@ -120,7 +134,7 @@ public class BattleShipSingleton : SingletonBase<BattleShipSingleton>
                     {
                         int placeRow = orientation == 'H' ? startRow : startRow + j;
                         int placeCol = orientation == 'H' ? startCol + j : startCol;
-                        Board[placeRow, placeCol].Ship = battleShip;
+                        board[placeRow, placeCol].Ship = battleShip;
                     }
 
                     BattleShips.Add(battleShip);
@@ -135,5 +149,7 @@ public class BattleShipSingleton : SingletonBase<BattleShipSingleton>
                 System.Diagnostics.Debug.WriteLine($"Could not place ship {i} after {maxAttempts} attempts");
             }
         }
+
+		return board;
     }
 }

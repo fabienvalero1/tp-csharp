@@ -20,10 +20,10 @@ public static class AIHelper
 
         while (attempts < maxAttempts)
         {
-            int aiRow = random.Next(0, BattleShipSingleton.Instance.Board.GetLength(0));
-            int aiColumn = random.Next(0, BattleShipSingleton.Instance.Board.GetLength(1));
+            int aiRow = random.Next(0, BattleShipSingleton.BoardSize);
+            int aiColumn = random.Next(0, BattleShipSingleton.BoardSize);
 
-            var aiCell = BattleShipSingleton.Instance.Board[aiRow, aiColumn];
+            var aiCell = BattleShipSingleton.Instance.HumanPlayerBoard[aiRow, aiColumn];
 
             // Only fire at cells that haven't been hit yet
             if (!aiCell.IsHit)

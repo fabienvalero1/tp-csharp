@@ -57,13 +57,13 @@ app.MapPost("fire/{row}/{column}/{gameId}", (int row, int column, string gameId)
             return Results.BadRequest("Invalid Game ID.");
         }
 
-        if (row < 0 || row >= BattleShipSingleton.Instance.Board.GetLength(0) ||
-            column < 0 || column >= BattleShipSingleton.Instance.Board.GetLength(1))
+        if (row < 0 || row >= BattleShipSingleton.BoardSize ||
+            column < 0 || column >= BattleShipSingleton.BoardSize)
         {
             return Results.BadRequest("Invalid coordinates.");
         }
 
-        var cell = BattleShipSingleton.Instance.Board[row, column];
+        var cell = BattleShipSingleton.Instance.AIPlayerBoard[row, column];
         
         if (cell == null)
         {
