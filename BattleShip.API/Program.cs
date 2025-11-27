@@ -1,11 +1,16 @@
 using BattleShip.Models;
 using BattleShip.API.lib;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddValidatorsFromAssemblyContaining<StartValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<FireValidator>();
+builder.Services.AddFluentValidationAutoValidation();
 
 var app = builder.Build();
 
@@ -17,16 +22,17 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapPost("/start/{playerName}", (string playerName) =>
+app.MapPost("/start", (Start start, IValidator<Start> validator) =>
 {
     try
     {
-        if (string.IsNullOrWhiteSpace(playerName))
-        {
-            return Results.BadRequest("Player name cannot be empty.");
-        }
+		var validationResult = validator.Validate(start);
+    	if (!validationResult.IsValid)
+    	{
+        	return Results.BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+    	}
 
-        Player humanPlayer = new Player { Name = playerName };
+        Player humanPlayer = new Player { Name = start.PlayerName };
         
         BattleShipSingleton.Instance.CreateBattleShipGame(humanPlayer);
         
@@ -34,7 +40,7 @@ app.MapPost("/start/{playerName}", (string playerName) =>
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "Error starting game for player: {PlayerName}", playerName);
+        app.Logger.LogError(ex, "Error starting game for player: {PlayerName}", start.PlayerName);
         return Results.Problem(
             detail: "An error occurred while starting the game.",
             statusCode: 500
@@ -43,27 +49,17 @@ app.MapPost("/start/{playerName}", (string playerName) =>
 })
 .WithName("PostStart");
 
-app.MapPost("fire/{row}/{column}/{gameId}", (int row, int column, string gameId) =>
+app.MapPost("fire", (Fire fire, IValidator<Fire> validator) =>
 {
     try
     {
-        if (!Guid.TryParse(gameId, out Guid parsedGameId))
-        {
-            return Results.BadRequest("Invalid Game ID format.");
-        }
+		var validationResult = validator.Validate(fire);
+    	if (!validationResult.IsValid)
+    	{
+        	return Results.BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+    	}
 
-        if (parsedGameId != BattleShipSingleton.Instance.Id)
-        {
-            return Results.BadRequest("Invalid Game ID.");
-        }
-
-        if (row < 0 || row >= BattleShipSingleton.BoardSize ||
-            column < 0 || column >= BattleShipSingleton.BoardSize)
-        {
-            return Results.BadRequest("Invalid coordinates.");
-        }
-
-        var cell = BattleShipSingleton.Instance.AIPlayerBoard[row, column];
+        var cell = BattleShipSingleton.Instance.AIPlayerBoard[fire.Row, fire.Column];
         
         if (cell == null)
         {
@@ -95,8 +91,8 @@ app.MapPost("fire/{row}/{column}/{gameId}", (int row, int column, string gameId)
         { 
             PlayerTurn = new 
             {
-                Row = row,
-                Column = column,
+                Row = fire.Row,
+                Column = fire.Column,
                 Message = playerMessage,
                 CellState = cell.State.ToString()
             },
@@ -105,7 +101,7 @@ app.MapPost("fire/{row}/{column}/{gameId}", (int row, int column, string gameId)
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "Error firing at position ({Row}, {Column})", row, column);
+        app.Logger.LogError(ex, "Error firing at position ({Row}, {Column})", fire.Row, fire.Column);
         return Results.Problem(
             detail: "An error occurred while processing the fire command.",
             statusCode: 500
