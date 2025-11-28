@@ -1,4 +1,5 @@
 ﻿namespace BattleShip.Models;
+
 using FluentValidation;
 
 /// <summary>
@@ -12,11 +13,11 @@ public class FireValidator : AbstractValidator<Fire>
     public FireValidator()
     {
         RuleFor(x => x.Row)
-            .NotEmpty().WithMessage("Row is required.")
+            .NotNull().WithMessage("Row is required.")
             .InclusiveBetween(0, BattleShipSingleton.BoardSize - 1)
             .WithMessage($"Row must be between 0 and {BattleShipSingleton.BoardSize - 1}.");
         RuleFor(x => x.Column)
-            .NotEmpty().WithMessage("Column is required.")
+            .NotNull().WithMessage("Row is required.")
             .InclusiveBetween(0, BattleShipSingleton.BoardSize - 1)
             .WithMessage($"Column must be between 0 and {BattleShipSingleton.BoardSize - 1}.");
         RuleFor(x => x.GameId)
