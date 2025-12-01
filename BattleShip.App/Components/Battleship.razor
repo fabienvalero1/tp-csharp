@@ -1,0 +1,126 @@
+﻿@using System.Net.Http
+@using System.Text
+@using System.Text.Json
+@using System.Net.Http.Headers
+@using BattleShip.Models;
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<h3>Battleship</h3>
+
+@if (!gameStarted)
+{
+    <button @onclick="StartGame">Démarrez une partie !</button>
+}
+else
+{
+    <table>
+        <tbody>
+            @foreach (var i in Enumerable.Range(0, grid_text.GetLength(0)))
+            {
+                <tr>
+                    @foreach (var j in Enumerable.Range(0, grid_text.GetLength(1)))
+                    {
+                        <td class="battlefield-cell" @onclick="() => HitCell(i, j)" style="cursor:pointer" row="@i" column="@j">@grid_text[@i, @j]</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private HttpClient client = InitializeHttpClient();
+
+    private bool gameStarted = false;
+    private Guid guid = new Guid();
+
+    private String[,] grid_text = InitializeGridText(10, 10);
+
+    public static HttpClient InitializeHttpClient()
+    {
+        HttpClient client = new HttpClient();
+        client.BaseAddress = new Uri("http://localhost:5252");
+
+        // Add an Accept header for JSON format.
+        client.DefaultRequestHeaders.Accept.Add(
+        new MediaTypeWithQualityHeaderValue("application/json"));
+        return client;
+    }
+
+    public static String[,] InitializeGridText(int rows, int columns)
+    {
+        String[,] grid = new String[rows, columns];
+        foreach (int i in Enumerable.Range(0, grid.GetLength(0)))
+        {
+            foreach (int j in Enumerable.Range(0, grid.GetLength(1)))
+            {
+                grid[i, j] = "◘";
+            }
+        }
+        return grid;
+    }
+
+    private async Task StartGame()
+    {
+        StringContent jsonContent = new(
+        JsonSerializer.Serialize(new
+        {
+            PlayerName = "Test",
+        }),
+        Encoding.UTF8,
+        "application/json");
+        await JS.InvokeVoidAsync("console.log", $"{jsonContent.ToString()}");
+        try
+        {
+            HttpResponseMessage response = await client.PostAsync(
+                    "start", jsonContent);
+            response.EnsureSuccessStatusCode();
+            var stringValue = await response.Content.ReadAsStringAsync();
+            var jsonValue = JsonSerializer.Deserialize<JsonElement>(stringValue);
+            guid = jsonValue.GetProperty("gameId").GetGuid();
+            gameStarted = true;
+            await JS.InvokeVoidAsync("console.log", $"GUID : {guid}");
+        }
+        catch (HttpRequestException ex)
+        {
+            await JS.InvokeVoidAsync("console.log", $"Error : {ex.Message}");
+        }
+    }
+
+    private async Task HitCell(int i, int j)
+    {
+        if (grid_text[i, j] != "◘")
+        {
+            return;
+        }
+        Fire fire = new Fire();
+        fire.Row = i;
+        fire.Column = j;
+        fire.GameId = guid.ToString();
+        StringContent jsonContent = new(
+            JsonSerializer.Serialize(fire),
+            Encoding.UTF8,
+        "application/json");
+        await JS.InvokeVoidAsync("console.log", $"{JsonSerializer.Serialize(fire)}");
+        try
+        {
+            HttpResponseMessage response = await client.PostAsync(
+                   "fire", jsonContent);
+            response.EnsureSuccessStatusCode();
+            var stringValue = await response.Content.ReadAsStringAsync();
+            var jsonValue = JsonSerializer.Deserialize<JsonElement>(stringValue);
+            await JS.InvokeVoidAsync("console.log", $"{jsonValue}");
+            grid_text[i, j] = jsonValue.GetProperty("playerTurn").GetProperty("cellState").GetString() == "Hit"
+                ? "X" : "•";
+            await JS.InvokeVoidAsync("console.log", $"{grid_text[i, j]}");
+            // await JS.InvokeVoidAsync("console.log", $"{grid_position[i, j]}");
+            // String display = grid_position[i, j] ? "X" : "•";
+            // grid_text[i, j] = display;
+        }
+        catch (HttpRequestException ex)
+        {
+            await JS.InvokeVoidAsync("console.log", $"Error : {ex.Message}");
+        }
+    }
+}
