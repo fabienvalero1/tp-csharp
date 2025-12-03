@@ -59,10 +59,16 @@ h1:focus {
     text-align: start;
 }
 
-.grid {
-    display: grid;
-    grid-template-columns: auto auto auto auto auto auto auto auto auto auto;
+#battlefields {
+    padding: 10px;
+    margin: 20px;
+    display: flex;
     justify-content: center;
+    align-items: center;
+}
+
+.Board {
+    text-align: center
 }
 
 .battlefield-cell {
