@@ -8,34 +8,53 @@
 
 <h3>Battleship</h3>
 
-@if (!gameStarted)
+@if (!instance.GameStarted)
 {
     <button @onclick="StartGame">Démarrez une partie !</button>
 }
 else
 {
-    <table>
-        <tbody>
-            @foreach (var i in Enumerable.Range(0, grid_text.GetLength(0)))
-            {
-                <tr>
-                    @foreach (var j in Enumerable.Range(0, grid_text.GetLength(1)))
+    <div id="battlefields">
+        <p class="Board">
+            <div>Votre tableau</div>
+            <table>
+                <tbody>
+                    @foreach (var i in Enumerable.Range(0, instance.PlayerBoard.GetLength(0)))
                     {
-                        <td class="battlefield-cell" @onclick="() => HitCell(i, j)" style="cursor:pointer" row="@i" column="@j">@grid_text[@i, @j]</td>
+                        <tr>
+                            @foreach (var j in Enumerable.Range(0, instance.PlayerBoard.GetLength(1)))
+                            {
+                                <td class="battlefield-cell" row="@i" column="@j">@instance.PlayerBoard[@i, @j]</td>
+                            }
+                        </tr>
                     }
-                </tr>
-            }
-        </tbody>
-    </table>
+                </tbody>
+            </table>
+        </p>
+        <div>===></div>
+        <p class="Board">
+            <div>Tableau de l'IA</div>
+            <table>
+                <tbody>
+                    @foreach (var i in Enumerable.Range(0, instance.OpponentBoard.GetLength(0)))
+                    {
+                        <tr>
+                            @foreach (var j in Enumerable.Range(0, instance.OpponentBoard.GetLength(1)))
+                            {
+                                <td class="battlefield-cell" @onclick="() => HitCell(i, j)" style="cursor:pointer" row="@i" column="@j">@convertOpponentBoardCellIntoString(@i, @j)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </p>
+    </div>
 }
 
 @code {
+    private GameSingleton instance = GameSingleton.Instance;
+
     private HttpClient client = InitializeHttpClient();
-
-    private bool gameStarted = false;
-    private Guid guid = new Guid();
-
-    private String[,] grid_text = InitializeGridText(10, 10);
 
     public static HttpClient InitializeHttpClient()
     {
@@ -48,17 +67,11 @@ else
         return client;
     }
 
-    public static String[,] InitializeGridText(int rows, int columns)
+    private char convertOpponentBoardCellIntoString(int row, int column)
     {
-        String[,] grid = new String[rows, columns];
-        foreach (int i in Enumerable.Range(0, grid.GetLength(0)))
-        {
-            foreach (int j in Enumerable.Range(0, grid.GetLength(1)))
-            {
-                grid[i, j] = "◘";
-            }
-        }
-        return grid;
+        bool? v = instance.OpponentBoard[row, column];
+        return v == null
+            ? '◘' : v == true ? 'X' : 'O';
     }
 
     private async Task StartGame()
@@ -78,8 +91,8 @@ else
             response.EnsureSuccessStatusCode();
             var stringValue = await response.Content.ReadAsStringAsync();
             var jsonValue = JsonSerializer.Deserialize<JsonElement>(stringValue);
-            guid = jsonValue.GetProperty("gameId").GetGuid();
-            gameStarted = true;
+            var guid = jsonValue.GetProperty("gameId").GetGuid();
+            instance.CreateNewGame(guid);
             await JS.InvokeVoidAsync("console.log", $"GUID : {guid}");
         }
         catch (HttpRequestException ex)
@@ -88,16 +101,16 @@ else
         }
     }
 
-    private async Task HitCell(int i, int j)
+    private async Task HitCell(int row, int column)
     {
-        if (grid_text[i, j] != "◘")
+        if (instance.OpponentBoard[row, column] != null)
         {
             return;
         }
         Fire fire = new Fire();
-        fire.Row = i;
-        fire.Column = j;
-        fire.GameId = guid.ToString();
+        fire.Row = row;
+        fire.Column = column;
+        fire.GameId = instance.Id.ToString();
         StringContent jsonContent = new(
             JsonSerializer.Serialize(fire),
             Encoding.UTF8,
@@ -110,13 +123,20 @@ else
             response.EnsureSuccessStatusCode();
             var stringValue = await response.Content.ReadAsStringAsync();
             var jsonValue = JsonSerializer.Deserialize<JsonElement>(stringValue);
-            await JS.InvokeVoidAsync("console.log", $"{jsonValue}");
-            grid_text[i, j] = jsonValue.GetProperty("playerTurn").GetProperty("cellState").GetString() == "Hit"
-                ? "X" : "•";
-            await JS.InvokeVoidAsync("console.log", $"{grid_text[i, j]}");
-            // await JS.InvokeVoidAsync("console.log", $"{grid_position[i, j]}");
-            // String display = grid_position[i, j] ? "X" : "•";
-            // grid_text[i, j] = display;
+            // await JS.InvokeVoidAsync("console.log", $"{jsonValue}");
+            instance.OpponentBoard[row, column] = jsonValue.GetProperty("playerTurn").GetProperty("cellState").GetString() == CellState.Hit.ToString()
+                ? true : false;
+            JsonElement aiTurn = jsonValue.GetProperty("aiTurn");
+            String? cellState = aiTurn.GetProperty("cellState").GetString();
+            if (cellState == "Error")
+            {
+                return;
+            }
+            int aiRow = aiTurn.GetProperty("row").GetInt16();
+            int aiColumn = aiTurn.GetProperty("column").GetInt16();
+            instance.PlayerBoard[aiRow, aiColumn] = cellState == CellState.Hit.ToString()
+                ? aiTurn.GetProperty("shipSymbol").GetString()[0] : cellState == CellState.Miss.ToString() ? '•' : '?';
+            // await JS.InvokeVoidAsync("console.log", $"{instance.OpponentBoard[i, j]}");
         }
         catch (HttpRequestException ex)
         {
