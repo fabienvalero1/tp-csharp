@@ -92,8 +92,9 @@ else
             var stringValue = await response.Content.ReadAsStringAsync();
             var jsonValue = JsonSerializer.Deserialize<JsonElement>(stringValue);
             var guid = jsonValue.GetProperty("gameId").GetGuid();
-            instance.CreateNewGame(guid);
-            await JS.InvokeVoidAsync("console.log", $"GUID : {guid}");
+            JsonElement jsonPlayerBoard = jsonValue.GetProperty("playerBoard");
+            instance.CreateNewGame(guid, jsonPlayerBoard);
+            await JS.InvokeVoidAsync("console.log", $"PlayerBoard : {jsonValue.GetProperty("playerBoard")}");
         }
         catch (HttpRequestException ex)
         {

@@ -80,3 +80,12 @@ h1:focus {
     margin: -2px;
     text-align: center;
 }
+
+.battlefield-cell__ship {
+    border-color: rgba(0,0,255,.1);
+    color: grey;
+}
+
+.battlefield-cell__empty {
+    color: blue;
+}

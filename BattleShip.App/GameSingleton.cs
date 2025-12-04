@@ -1,6 +1,7 @@
 ﻿namespace BattleShip.App;
 
 using BattleShip.Models;
+using System.Text.Json;
 
 public class GameSingleton : SingletonBase<GameSingleton>
 {
@@ -11,22 +12,25 @@ public class GameSingleton : SingletonBase<GameSingleton>
 
     public bool?[,] OpponentBoard { get; private set; }
 
-    public void CreateNewGame(Guid id)
+    public void CreateNewGame(Guid id, JsonElement JsonPlayerBoard)
     {
         GameStarted = true;
         Id = id;
-        PlayerBoard = InitializePlayerBoard(10, 10);
-        OpponentBoard = InitializeOpponentBoard(10, 10);
+        PlayerBoard = InitializePlayerBoard(JsonPlayerBoard);
+        OpponentBoard = InitializeOpponentBoard(PlayerBoard.GetLength(0), PlayerBoard.GetLength(1));
     }
 
-    private static char[,] InitializePlayerBoard(int rows, int columns)
+    private static char[,] InitializePlayerBoard(JsonElement JsonPlayerBoard)
     {
+        int rows = JsonPlayerBoard.GetArrayLength();
+        int columns = JsonPlayerBoard[0].GetArrayLength();
         char[,] grid = new char[rows, columns];
-        foreach (int i in Enumerable.Range(0, grid.GetLength(0)))
+        foreach (int row in Enumerable.Range(0, JsonPlayerBoard.GetArrayLength()))
         {
-            foreach (int j in Enumerable.Range(0, grid.GetLength(1)))
+            foreach (int column in Enumerable.Range(0, JsonPlayerBoard[row].GetArrayLength()))
             {
-                grid[i, j] = '\0';
+                JsonElement ship = JsonPlayerBoard[row][column].GetProperty("ship");
+                grid[row, column] = ship.ValueKind != JsonValueKind.Null ? ship.GetProperty("symbol").GetString()[0] : '\0';
             }
         }
         return grid;

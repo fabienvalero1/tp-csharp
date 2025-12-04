@@ -36,7 +36,18 @@ app.MapPost("/start", (Start start, IValidator<Start> validator) =>
         
         BattleShipSingleton.Instance.CreateBattleShipGame(humanPlayer);
         
-        return Results.Ok(new { GameId = BattleShipSingleton.Instance.Id });
+        var board = BattleShipSingleton.Instance.HumanPlayerBoard;
+
+        var serializableBoard = Enumerable.Range(0, board.GetLength(0))
+            .Select(i => Enumerable.Range(0, board.GetLength(1))
+                .Select(j => board[i, j])
+                .ToList()
+            ).ToList();
+
+        return Results.Ok(new {
+            GameId = BattleShipSingleton.Instance.Id,
+            PlayerBoard = serializableBoard,
+        });
     }
     catch (Exception ex)
     {
