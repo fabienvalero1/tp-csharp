@@ -1,5 +1,4 @@
 using BattleShip.Models;
-using BattleShip.API.lib;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 
