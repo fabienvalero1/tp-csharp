@@ -68,7 +68,11 @@ app.MapPost("fire", (Fire fire, IValidator<Fire> validator) =>
 
         if (cell.IsHit)
         {
-            return Results.Ok(new { Message = "Already fired at this location.", CellState = cell.State.ToString() });
+            return Results.Ok(new { 
+                Message = "Already fired at this location.", 
+                CellState = cell.State.ToString(),
+                Winner = 0
+            });
         }
 
         // Player's turn
@@ -84,8 +88,32 @@ app.MapPost("fire", (Fire fire, IValidator<Fire> validator) =>
             playerMessage = "Miss!";
         }
 
+        // Check for winner after player's shot
+        int winnerAfterPlayerTurn = AIHelper.CheckWinner();
+        
+        // If player wins, don't let AI play
+        if (winnerAfterPlayerTurn == 1)
+        {
+            return Results.Ok(new 
+            { 
+                PlayerTurn = new 
+                {
+                    Row = fire.Row,
+                    Column = fire.Column,
+                    Message = playerMessage,
+                    CellState = cell.State.ToString(),
+                    Winner = winnerAfterPlayerTurn
+                },
+                AITurn = (object?)null,
+                Winner = winnerAfterPlayerTurn
+            });
+        }
+
         // AI's turn (automatic response)
         var aiResponse = AIHelper.AIFire();
+        
+        // Get final winner status (could be -1 if AI won on their turn)
+        int finalWinner = AIHelper.CheckWinner();
 
         return Results.Ok(new 
         { 
@@ -94,9 +122,11 @@ app.MapPost("fire", (Fire fire, IValidator<Fire> validator) =>
                 Row = fire.Row,
                 Column = fire.Column,
                 Message = playerMessage,
-                CellState = cell.State.ToString()
+                CellState = cell.State.ToString(),
+                Winner = winnerAfterPlayerTurn
             },
-            AITurn = aiResponse
+            AITurn = aiResponse,
+            Winner = finalWinner
         });
     }
     catch (Exception ex)
